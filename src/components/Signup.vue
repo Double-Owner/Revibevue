@@ -53,9 +53,9 @@
   
   <script setup>
 import { ref } from "vue";
-import { useRouter } from "vue-router"; // ✅ Vue Router 사용
+import { useRouter } from "vue-router"; 
 
-const router = useRouter(); // ✅ 라우터 인스턴스 생성
+const router = useRouter(); 
 
 const form = ref({
   email: "",
@@ -67,7 +67,7 @@ const form = ref({
   profileImage: null,
 });
 
-const message = ref(""); // 성공 또는 실패 메시지
+const message = ref(""); 
 const success = ref(false);
 const loading = ref(false);
 
@@ -103,9 +103,9 @@ const submitForm = async () => {
       message.value = result.message || "회원가입이 완료되었습니다!";
       success.value = true;
       
-      // ✅ 2초 후 홈(`/`)으로 이동
+     
       setTimeout(() => {
-        router.push("/"); // 🚀 홈으로 리다이렉트
+        router.push("/"); 
       }, 2000);
     } else {
       message.value = result.message || "회원가입에 실패했습니다.";
@@ -121,7 +121,7 @@ const submitForm = async () => {
 </script>
   
   <style scoped>
-  /* ✅ 전체 스타일 */
+  
   .signup-wrapper {
     display: flex;
     justify-content: center;
@@ -168,7 +168,7 @@ const submitForm = async () => {
     border-radius: 8px;
     font-size: 16px;
     transition: all 0.3s ease-in-out;
-    width: 100%;
+
   }
   
   input:focus, select:focus {
@@ -180,7 +180,7 @@ const submitForm = async () => {
   button {
     width: 100%;
     padding: 14px;
-    background-color: #3498db;
+    background-color: #32A852;
     color: white;
     font-size: 18px;
     font-weight: bold;

@@ -4,24 +4,17 @@
       <h2>로그인</h2>
       <form @submit.prevent="login">
         <div class="form-group">
-          <input type="email" v-model="form.email" required placeholder="이메일" />
+          <input v-model="form.email" placeholder="이메일" required />
         </div>
-
         <div class="form-group">
-          <input type="password" v-model="form.password" required placeholder="비밀번호" />
+          <input v-model="form.password" type="password" placeholder="비밀번호" required />
         </div>
-
-        <button type="submit" :disabled="loading">
-          {{ loading ? "로그인 중..." : "로그인" }}
-        </button>
+        <button type="submit" :disabled="loading">로그인</button>
       </form>
 
-      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-      <button class="kakao-login-btn" @click="kakaoLogin">
-        <img src="@/assets/kakao_logo.png" alt="Kakao Logo" />
-        카카오 로그인
-      </button>
+      <button @click="kakaoLogin" class="kakao-login-btn">카카오 로그인</button>
     </div>
   </div>
 </template>
@@ -38,7 +31,18 @@ const form = ref({
 const loading = ref(false);
 const errorMessage = ref("");
 
-// ✅ 일반 로그인 함수
+
+const decodeJWT = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])); 
+    return payload;
+  } catch (error) {
+    console.error("JWT 디코딩 오류:", error);
+    return null;
+  }
+};
+
+
 const login = async () => {
   loading.value = true;
   errorMessage.value = "";
@@ -46,20 +50,40 @@ const login = async () => {
   try {
     const response = await fetch("http://localhost:8080/api/users/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form.value),
     });
 
-    const result = await response.json(); // JSON 변환
-    console.log("서버 응답:", result); // ✅ 응답 구조 확인
+    const result = await response.json();
+    console.log("서버 응답:", result);
+
+    if (!response.ok) {
+      errorMessage.value = result.message || "로그인 실패!";
+      return;
+    }
 
     if (result.data && result.data.accessToken) {
       localStorage.setItem("accessToken", result.data.accessToken);
       localStorage.setItem("refreshToken", result.data.refreshToken);
-      router.push("/");
+
+   
+      const decoded = decodeJWT(result.data.accessToken);
+      console.log("JWT 디코딩 결과:", decoded);
+
+      if (decoded && decoded.role) {
+        localStorage.setItem("role", decoded.role); 
+      } else {
+        console.warn("JWT에 role 정보가 없습니다.");
+      }
+
+      alert("로그인 성공!");
+
       
+      if (decoded?.role?.toUpperCase() === "ROLE_ADMIN" || decoded?.role?.toUpperCase() === "ADMIN") {
+        router.push("/register"); 
+      } else {
+        router.push("/"); 
+      }
     } else {
       errorMessage.value = "서버 응답에 accessToken이 없습니다.";
     }
@@ -71,10 +95,34 @@ const login = async () => {
   }
 };
 
-// ✅ 카카오 로그인 처리 함수
+
+const checkTokenExpiration = () => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return;
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])); // JWT 디코딩
+    const exp = payload.exp * 1000; // 만료 시간 (밀리초 변환)
+
+    if (Date.now() >= exp) {
+      console.log("JWT 토큰 만료됨, 자동 로그아웃 수행");
+      localStorage.clear();
+      router.push("/login");
+    }
+  } catch (error) {
+    console.error("JWT 디코딩 오류:", error);
+    localStorage.clear();
+    router.push("/login");
+  }
+};
+
+
+checkTokenExpiration();
+
+// ✅ 카카오 로그인
 const kakaoLogin = () => {
-  const REST_API_KEY = "YOUR_KAKAO_REST_API_KEY"; // 🔥 카카오 REST API 키 입력
-  const REDIRECT_URI = "http://localhost:8080/api/users/kakao/callback"; // 🔥 백엔드에서 설정한 리다이렉트 URI
+  const REST_API_KEY = "YOUR_KAKAO_REST_API_KEY"; 
+  const REDIRECT_URI = "http://localhost:8080/api/users/kakao/callback"; 
   const kakaoAuthURL = `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
 
   window.location.href = kakaoAuthURL;
@@ -82,7 +130,6 @@ const kakaoLogin = () => {
 </script>
 
 <style scoped>
-/* ✅ 전체 레이아웃 */
 .login-wrapper {
   display: flex;
   justify-content: center;
@@ -99,26 +146,27 @@ const kakaoLogin = () => {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
+.login-container>h2{
+  margin-bottom: 40px;
+}
 
-/* ✅ 입력 필드 */
 .form-group {
   margin-bottom: 15px;
 }
 
 input {
-  width: 100%;
+  width: 90%;
   padding: 12px;
   border: 1px solid #ddd;
-  border-radius: 5px;
+  border-radius: 30px;
   font-size: 16px;
-  outline: none;
+
 }
 
-/* ✅ 일반 로그인 버튼 */
 button {
   width: 100%;
   padding: 12px;
-  background: #007bff;
+  background: #32A852;
   color: white;
   font-size: 16px;
   border: none;
@@ -137,7 +185,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ✅ 카카오 로그인 버튼 */
 .kakao-login-btn {
   display: flex;
   align-items: center;
@@ -162,8 +209,7 @@ button:disabled {
   background: #ffeb3b;
 }
 
-/* ✅ 오류 메시지 스타일 */
-.error-message {
+.error {
   color: red;
   font-size: 14px;
   margin-top: 10px;
