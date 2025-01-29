@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import Signup from "../components/Signup.vue";
 import Login from "../components/Login.vue";
+import ProfileView from "../views/ProfileView.vue";
 import ItemRegister from "../views/ItemRegister.vue";
 import { getUserRoleFromToken } from "../utils/auth"; // JWT에서 role 가져오는 함수
 
@@ -8,6 +9,11 @@ const routes = [
   { path: "/", component: null }, // App.vue에서 직접 홈 화면 표시
   { path: "/signup", component: Signup },
   { path: "/login", component: Login },
+  { 
+    path: "/profile", 
+    component: ProfileView,
+    meta: { requiresAuth: true }, // ✅ 로그인한 사용자만 접근 가능
+  },
   { 
     path: "/register", 
     component: ItemRegister,
