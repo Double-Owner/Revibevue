@@ -1,3 +1,4 @@
+
 <template>
   <nav class="nav">
     <div class="logo">
@@ -19,56 +20,35 @@
       </li>
 
       <!-- 로그인한 경우 로그아웃 버튼 -->
-      <li v-if="isLoggedIn" @click="logout" class="logout">로그아웃</li>
+      <li v-if="isLoggedIn" @click="handleLogout" class="logout">로그아웃</li>
     </ul>
   </nav>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { computed } from "vue";
 
-const router = useRouter();
-const isLoggedIn = ref(false);
-const isAdmin = ref(false);
+const props = defineProps({
+  isLoggedIn: Boolean,
+  isAdmin: Boolean,
+});
+const emit = defineEmits(["logout"]);
 
-const navItems = ref([
+const navItems = [
   { text: "홈", link: "/" },
   { text: "로그인", link: "/login", requiresAuth: false },
   { text: "회원가입", link: "/signup", requiresAuth: false },
-]);
+];
 
 // ✅ 로그인 상태에 따라 네비게이션 항목 필터링
 const filteredNavItems = computed(() => {
-  return navItems.value.filter((item) => {
-    // 로그인한 경우 "로그인" 및 "회원가입" 버튼 숨기기
-    if (isLoggedIn.value && (item.link === "/login" || item.link === "/signup")) {
-      return false;
-    }
-    return true;
-  });
+  return navItems.filter((item) => !(props.isLoggedIn && (item.link === "/login" || item.link === "/signup")));
 });
 
-// ✅ 로그인 여부 확인
-const checkLoginStatus = () => {
-  const token = localStorage.getItem("accessToken");
-  isLoggedIn.value = !!token;
-
-  const role = localStorage.getItem("role");
-  isAdmin.value = role === "ROLE_ADMIN";
+// ✅ 로그아웃 핸들러
+const handleLogout = () => {
+  emit("logout");
 };
-
-// ✅ 로그아웃 처리
-const logout = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("role");
-  isLoggedIn.value = false;
-  isAdmin.value = false;
-  router.push("/");
-};
-
-onMounted(checkLoginStatus);
 </script>
 
 <style scoped>

@@ -2,7 +2,7 @@
   <section class="style-gallery">
     <h2>Revibe 고객이 찾는 스타일</h2>
     <div class="gallery-container">
-      <div v-for="(item, index) in styles" :key="index" class="gallery-item">
+      <div v-for="(item, index) in styles" :key="index" class="gallery-item" @click="goToDetail(item.itemId)">
         <img :src="item.image" :alt="item.title" />
         <p>{{ item.title }}</p>
       </div>
@@ -12,26 +12,35 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
-// 상품 스타일 목록
+const router = useRouter();
 const styles = ref([]);
 
 const fetchStyles = async () => {
-try {
-  const response = await fetch("http://localhost:8080/api/items?page=0&size=10"); 
-  const result = await response.json();
+  try {
+    const response = await fetch("http://localhost:8080/api/items?page=0&size=10"); 
+    const result = await response.json();
 
-  if (response.ok && result.data) {
-    styles.value = result.data.content.map(item => ({ title: item.name, image: item.image }));
-  } else {
-    console.error("상품 목록 불러오기 실패:", result.message);
+    if (response.ok && result.data) {
+      styles.value = result.data.content.map(item => ({ itemId: item.itemId, title: item.name, image: item.image }));
+    } else {
+      console.error("상품 목록 불러오기 실패:", result.message);
+    }
+  } catch (error) {
+    console.error("상품 목록 불러오기 오류:", error);
   }
-} catch (error) {
-  console.error("상품 목록 불러오기 오류:", error);
-}
 };
 
-// ✅ 페이지 로드 시 상품 목록 불러오기
+const goToDetail = (id) => {
+  if (!id) {
+    console.error("상품 ID가 존재하지 않습니다!");
+    return;
+  }
+  console.log("선택한 상품 ID:", id);
+  router.push(`/item/${id}`);
+};
+
 onMounted(fetchStyles);
 </script>
 
@@ -65,6 +74,7 @@ h2 {
   border-radius: 12px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease-in-out;
+  cursor: pointer;
 }
 
 .gallery-item:hover {

@@ -3,7 +3,12 @@ import Signup from "../components/Signup.vue";
 import Login from "../components/Login.vue";
 import ProfileView from "../views/ProfileView.vue";
 import ItemRegister from "../views/ItemRegister.vue";
+import ItemDetail from "../views/ItemDetail.vue";
 import { getUserRoleFromToken } from "../utils/auth"; // JWT에서 role 가져오는 함수
+import PaymentPage from "../views/PaymentPage.vue"; 
+import ChatPage from "../views/ChatPage.vue";
+import ReviewPage from "../views/Review.vue";
+import TossPay from "../views/TossPay.vue";
 
 const routes = [
   { path: "/", component: null }, // App.vue에서 직접 홈 화면 표시
@@ -14,11 +19,16 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true }, // ✅ 로그인한 사용자만 접근 가능
   },
+  { path: "/payment/:id", component: PaymentPage, props: true },
+  { path: "/item/:id", component: ItemDetail, props: true },
+  { path: "/review/:id", component: ReviewPage },
+  { path: "/tosspay/:id", component: TossPay },
   { 
     path: "/register", 
     component: ItemRegister,
     meta: { requiresAdmin: true }, // ✅ 관리자만 접근 가능
-  }
+  },
+  { path: "/chat", component: ChatPage }, 
 ];
 
 const router = createRouter({
