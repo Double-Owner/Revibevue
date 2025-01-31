@@ -1,66 +1,72 @@
 <template>
-    <div v-if="item" class="item-detail">
-      <h2>{{ item.name }}</h2>
-      <img :src="item.image" :alt="item.name" class="item-image" />
-      <p><strong>브랜드:</strong> {{ item.brandName }}</p>
-      <p><strong>카테고리:</strong> {{ item.category }}</p>
-      <p><strong>설명:</strong> {{ item.description }}</p>
-      <p><strong>등록 관리자:</strong> {{ item.adminName }}</p>
-      
-      <div class="button-container">
-        <button @click="goToBid('buy')" class="bid-button buy-button">구매 입찰</button>
-        <button @click="goToBid('sell')" class="bid-button sell-button">판매 입찰</button>
-      </div>
-      
-      <button @click="goToPayment" class="payment-button">결제하기</button>
-      <button @click="goBack" class="back-button">뒤로 가기</button>
+  <div v-if="item" class="item-detail">
+    <h2>{{ item.name }}</h2>
+    <img :src="item.image" :alt="item.name" class="item-image" />
+    <p><strong>브랜드:</strong> {{ item.brandName }}</p>
+    <p><strong>카테고리:</strong> {{ item.category }}</p>
+    <p><strong>설명:</strong> {{ item.description }}</p>
+    <p><strong>등록 관리자:</strong> {{ item.adminName }}</p>
+    
+    <div class="button-container">
+      <button @click="goToBid('buy')" class="bid-button buy-button">구매 입찰</button>
+      <button @click="goToBid('sell')" class="bid-button sell-button">판매 입찰</button>
     </div>
-    <div v-else class="loading">상품 정보를 불러오는 중...</div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted, watch } from "vue";
-  import { useRoute, useRouter } from "vue-router";
-  
-  const route = useRoute();
-  const router = useRouter();
-  const item = ref(null);
-  
-  const fetchItemDetail = async (id) => {
-    if (!id) {
-      console.error("잘못된 상품 ID입니다.");
-      return;
+
+    <button @click="goToPayment" class="payment-button">결제하기</button>
+    <button @click="goBack" class="back-button">뒤로 가기</button>
+  </div>
+  <div v-else class="loading">상품 정보를 불러오는 중...</div>
+</template>
+
+<script setup>
+import { ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+const route = useRoute();
+const router = useRouter();
+const item = ref(null);
+
+const fetchItemDetail = async (id) => {
+  try {
+    const response = await fetch(`http://localhost:8080/api/items/${id}`);
+    const result = await response.json();
+    if (response.ok) {
+      item.value = result.data;
+    } else {
+      console.error("상품 정보 불러오기 실패:", result.message);
     }
-    console.log("현재 상품 ID:", id);
-    try {
-      const response = await fetch(`http://localhost:8080/api/items/${id}`);
-      const result = await response.json();
-      if (response.ok) {
-        item.value = result.data;
-      } else {
-        console.error("상품 정보 불러오기 실패:", result.message);
-      }
-    } catch (error) {
-      console.error("상품 정보 불러오기 오류:", error);
+  } catch (error) {
+    console.error("상품 정보 불러오기 오류:", error);
+  }
+};
+
+onMounted(() => {
+  fetchItemDetail(route.params.id);
+});
+
+const goBack = () => {
+  router.push("/");
+};
+
+const goToBid = (type) => {
+  router.push(`/bid/${type}/${route.params.id}`);
+};
+
+const goToPayment = () => {
+  router.push({
+    path: "/pay",
+    query: {
+      productId: item.value.id,
+      productName: item.value.name,
+      productPrice: item.value.price
     }
-  };
-  
-  watch(() => route.params.id, (newId) => {
-    fetchItemDetail(newId);
-  }, { immediate: true });
-  
-  const goBack = () => {
-    router.push("/");
-  };
-  
-  const goToBid = (type) => {
-    router.push(`/bid/${type}/${route.params.id}`);
-  };
-  
-  const goToPayment = () => {
-    router.push(`/payment/${route.params.id}`);
-  };
-  </script>
+  });
+};
+</script>
+
+<style scoped>
+/* 기존 스타일 유지 */
+</style>
   
   <style scoped>
   .item-detail {

@@ -6,9 +6,10 @@ import ItemRegister from "../views/ItemRegister.vue";
 import ItemDetail from "../views/ItemDetail.vue";
 import { getUserRoleFromToken } from "../utils/auth"; // JWT에서 role 가져오는 함수
 import PaymentPage from "../views/PaymentPage.vue"; 
-import ChatPage from "../views/ChatPage.vue";
 import ReviewPage from "../views/Review.vue";
 import TossPay from "../views/TossPay.vue";
+import TossSuccess from "@/views/TossSuccess.vue";
+import ChatPage from '../views/ChatPage.vue';
 
 const routes = [
   { path: "/", component: null }, // App.vue에서 직접 홈 화면 표시
@@ -22,7 +23,10 @@ const routes = [
   { path: "/payment/:id", component: PaymentPage, props: true },
   { path: "/item/:id", component: ItemDetail, props: true },
   { path: "/review/:id", component: ReviewPage },
-  { path: "/tosspay/:id", component: TossPay },
+  { path: "/pay", component: TossPay }, // 결제 페이지
+  { path: "/success", component: TossSuccess }, // 결제 성공 페이지
+  { path: "/chat", component: ChatPage },
+  { path: "/chat/:roomId?", component: ChatPage, props: true },
   { 
     path: "/register", 
     component: ItemRegister,

@@ -1,69 +1,103 @@
 <template>
-    <div class="toss-pay-container">
-      <h2>토스페이 결제</h2>
-      <div id="payment-method"></div>
-      <div id="agreement"></div>
-      <button class="payment-button" id="payment-button">결제하기</button>
-    </div>
-  </template>
-  
-  <script setup>
-  import { onMounted } from "vue";
-  import { useRoute } from "vue-router";
-  
-  const route = useRoute();
-  
-  const loadTossPayments = () => {
-    return new Promise((resolve, reject) => {
-      if (window.TossPayments) {
-        resolve();
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://js.tosspayments.com/v2/standard";
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  };
-  
-  const initializeTossPay = async () => {
+  <div class="toss-pay-container">
+    <h2>토스페이 결제</h2>
+    <p><strong>상품명:</strong> {{ productName }}</p>
+    <p><strong>가격:</strong> {{ productPrice }}원</p>
+
+    <div id="payment-method"></div>
+    <div id="agreement"></div>
+    <button class="payment-button" id="payment-button">결제하기</button>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+const productId = ref(route.query.productId || "상품 ID 없음");
+const productName = ref(route.query.productName || "상품 없음");
+const productPrice = ref(route.query.productPrice || 0);
+
+console.log("TossPay.vue 로드됨");
+console.log("Query Params:", route.query);
+
+const loadTossPayments = () => {
+  return new Promise((resolve, reject) => {
+    if (window.TossPayments) {
+      console.log("TossPayments 이미 로드됨");
+      resolve();
+      return;
+    }
+    console.log("TossPayments 스크립트 로드 시작");
+    const script = document.createElement("script");
+    script.src = "https://js.tosspayments.com/v2/standard";
+    script.onload = () => {
+      console.log("TossPayments 스크립트 로드 완료");
+      resolve();
+    };
+    script.onerror = (error) => {
+      console.error("TossPayments 스크립트 로드 실패", error);
+      reject();
+    };
+    document.head.appendChild(script);
+  });
+};
+
+const initializeTossPay = async () => {
+  try {
     await loadTossPayments();
-  
+    if (!window.TossPayments) {
+      console.error("TossPayments가 로드되지 않았습니다.");
+      return;
+    }
+
     const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
-    const customerKey = generateRandomString();
     const tossPayments = TossPayments(clientKey);
-  
-    const widgets = tossPayments.widgets({ customerKey });
-    
+    console.log("TossPayments 객체 생성 완료");
+
+    const widgets = tossPayments.widgets({ customerKey: generateRandomString() });
+
     await widgets.setAmount({
       currency: "KRW",
-      value: 50000,
+      value: parseInt(productPrice.value),
     });
-  
+
     await Promise.all([
       widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
       widgets.renderAgreement({ selector: "#agreement", variantKey: "AGREEMENT" }),
     ]);
-  
+
+    console.log("위젯 렌더링 완료");
+
     document.getElementById("payment-button").addEventListener("click", async function () {
-      await widgets.requestPayment({
-        orderId: generateRandomString(),
-        orderName: "토스 티셔츠 외 2건",
-        successUrl: "http://localhost:8080/v1/payments/confirm",
-        failUrl: window.location.origin + "/fail.html",
-        customerEmail: "customer123@gmail.com",
-        customerName: "김토스",
-      });
+      console.log("결제 버튼 클릭됨");
+
+      try {
+        await widgets.requestPayment({
+          orderId: generateRandomString(),
+          orderName: productName.value,
+          successUrl: `${window.location.origin}/success?orderId=${generateRandomString()}&orderName=${productName.value}&amount=${productPrice.value}`,
+          failUrl: window.location.origin + "/fail.html",
+          customerEmail: "customer123@gmail.com",
+          customerName: "김토스",
+        });
+        console.log("결제 요청 성공");
+      } catch (error) {
+        console.error("결제 요청 실패:", error);
+      }
     });
-  };
-  
-  function generateRandomString() {
-    return window.btoa(Math.random()).slice(0, 20);
+  } catch (error) {
+    console.error("TossPayments 초기화 오류:", error);
   }
-  
-  onMounted(initializeTossPay);
-  </script>
+};
+
+function generateRandomString() {
+  return window.btoa(Math.random()).slice(0, 20);
+}
+
+onMounted(initializeTossPay);
+</script>
   
   <style scoped>
   .toss-pay-container {

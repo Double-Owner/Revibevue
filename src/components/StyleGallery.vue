@@ -40,7 +40,7 @@ const goToDetail = (id) => {
   console.log("선택한 상품 ID:", id);
   router.push(`/item/${id}`);
 };
-
+ 
 onMounted(fetchStyles);
 </script>
 
