@@ -10,6 +10,10 @@ import ReviewPage from "../views/Review.vue";
 import TossPay from "../views/TossPay.vue";
 import TossSuccess from "@/views/TossSuccess.vue";
 import ChatPage from '../views/ChatPage.vue';
+import SellBid from "@/views/SellBid.vue";
+import BuyBid from "@/views/BuyBid.vue";
+
+
 
 const routes = [
   { path: "/", component: null }, // App.vue에서 직접 홈 화면 표시
@@ -20,6 +24,7 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true }, // ✅ 로그인한 사용자만 접근 가능
   },
+  { path: "/sell-bid/:id", component: SellBid },
   { path: "/payment/:id", component: PaymentPage, props: true },
   { path: "/item/:id", component: ItemDetail, props: true },
   { path: "/review/:id", component: ReviewPage },
@@ -33,6 +38,7 @@ const routes = [
     meta: { requiresAdmin: true }, // ✅ 관리자만 접근 가능
   },
   { path: "/chat", component: ChatPage }, 
+  { path: "/buy-bid/:id", component: BuyBid, props: true },
 ];
 
 const router = createRouter({
