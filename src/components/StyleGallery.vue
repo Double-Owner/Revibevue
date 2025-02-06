@@ -19,11 +19,11 @@ const styles = ref([]);
 
 const fetchStyles = async () => {
   try {
-    const response = await fetch("http://localhost:8080/api/items?page=0&size=10"); 
+    const response = await fetch("http://localhost:8080/api/items?page=1&size=10"); 
     const result = await response.json();
 
     if (response.ok && result.data) {
-      styles.value = result.data.content.map(item => ({ itemId: item.itemId, title: item.name, image: item.image }));
+      styles.value = result.data.map(item => ({ itemId: item.itemId, title: item.name, image: item.image }));
     } else {
       console.error("상품 목록 불러오기 실패:", result.message);
     }

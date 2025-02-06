@@ -51,7 +51,7 @@ const checkAdmin = () => {
   const token = localStorage.getItem("accessToken");
   if (!token) {
     alert("로그인이 필요합니다.");
-    router.push("/");
+    router.push("/login");
     return;
   }
   const decoded = decodeJWT(token);
@@ -64,13 +64,16 @@ const checkAdmin = () => {
 };
 
 const handleFileChange = (event) => {
-  item.value.image = event.target.files[0];
+  if (event.target.files.length > 0) {
+    item.value.image = event.target.files[0];
+  }
 };
 
 const createItem = async () => {
   errorMessage.value = "";
   successMessage.value = "";
   loading.value = true;
+  
   const token = localStorage.getItem("accessToken");
   if (!token) {
     alert("로그인이 필요합니다.");
@@ -88,12 +91,15 @@ const createItem = async () => {
     const response = await fetch("http://localhost:8080/api/items", {
       method: "POST",
       mode: "cors",
+      credentials: "include",
       body: formData,
-      headers: { "Authorization": `Bearer ${token}` },
+      headers: { 
+        "Authorization": `Bearer ${token}`  
+      }
     });
-    
-    const result = await response.json();
+
     if (!response.ok) {
+      const result = await response.json();
       throw new Error(result.message || "상품 등록 실패");
     }
 

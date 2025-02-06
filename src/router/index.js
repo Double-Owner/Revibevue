@@ -12,6 +12,8 @@ import TossSuccess from "@/views/TossSuccess.vue";
 import ChatPage from '../views/ChatPage.vue';
 import SellBid from "@/views/SellBid.vue";
 import BuyBid from "@/views/BuyBid.vue";
+import CouponRegister from "@/views/CouponRegister.vue";
+import LikeListView from "@/views/LikeListView.vue";
 
 
 
@@ -32,6 +34,7 @@ const routes = [
   { path: "/success", component: TossSuccess }, // 결제 성공 페이지
   { path: "/chat", component: ChatPage },
   { path: "/chat/:roomId?", component: ChatPage, props: true },
+  { path: "/likes", component: LikeListView },
   { 
     path: "/register", 
     component: ItemRegister,
@@ -39,6 +42,11 @@ const routes = [
   },
   { path: "/chat", component: ChatPage }, 
   { path: "/buy-bid/:id", component: BuyBid, props: true },
+  {
+    path: "/coupon-register", // ✅ 쿠폰 등록 페이지 추가
+    component: CouponRegister,
+    meta: { requiresAdmin: true }, // ✅ 관리자만 접근 가능
+  },
 ];
 
 const router = createRouter({

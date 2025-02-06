@@ -7,11 +7,16 @@
       <button @click="inviteUser">초대</button>
     </div>
 
-    <div class="chat-messages">
-      <ul ref="chatMessages">
-        <li v-for="message in messages" :key="message.id" class="message-container">
-          <div class="message" :class="{ 'sent-message': message.sender === username, 'received-message': message.sender !== username }">
-            <div class="sender">{{ message.sender }}:</div>
+    <div class="chat-messages" ref="chatMessages">
+      <ul>
+        <li 
+          v-for="message in messages" 
+          :key="message.id" 
+          class="message-container"
+          :class="{ 'sent-message': isCurrentUser(message.sender), 'received-message': !isCurrentUser(message.sender) }"
+        >
+          <div class="message-content">
+            <div class="sender">{{ message.sender || "알 수 없음" }}</div>
             <div class="message-text">{{ message.message }}</div>
             <div class="timestamp">{{ formatTimestamp(message.createdAt) }}</div>
           </div>
@@ -27,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { Stomp } from "@stomp/stompjs";
 
@@ -37,17 +42,41 @@ const roomTitle = ref(route.query.title);
 const messages = ref([]);
 const newMessage = ref("");
 const inviteEmail = ref("");
-const username = ref(localStorage.getItem("username") || "사용자");
+const userEmail = ref(""); // ✅ JWT에서 추출한 사용자 이메일 저장
 let stompClient = null;
 const chatMessages = ref(null);
 
-watch(() => route.params.roomId, (newRoomId) => {
-  roomId.value = newRoomId;
-  roomTitle.value = route.query.title;
-  connectWebSocket(newRoomId);
-  fetchMessages(newRoomId);
-});
+// ✅ JWT 디코딩 함수 (Base64 디코딩)
+const decodeToken = (token) => {
+  try {
+    const payload = token.split(".")[1]; // JWT의 두 번째 부분 (Payload)
+    return JSON.parse(atob(payload)); // Base64 디코딩 후 JSON 변환
+  } catch (error) {
+    console.error("❌ 토큰 디코딩 실패:", error);
+    return null;
+  }
+};
 
+// ✅ JWT 토큰에서 사용자 이메일 추출
+const fetchUserEmailFromToken = () => {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    const userInfo = decodeToken(token);
+    if (userInfo?.sub) {  // ✅ JWT `subject` 값(email) 추출
+      userEmail.value = userInfo.sub.trim().toLowerCase();
+      localStorage.setItem("userEmail", userEmail.value);
+      console.log("👤 현재 사용자 (email):", userEmail.value);
+    }
+  }
+};
+
+// ✅ 현재 사용자가 보낸 메시지인지 확인하는 함수
+const isCurrentUser = (sender) => {
+  if (!sender || !userEmail.value) return false;
+  return sender.trim().toLowerCase() === userEmail.value;
+};
+
+// ✅ WebSocket 연결 설정
 const connectWebSocket = (roomId) => {
   if (stompClient && stompClient.connected) {
     console.log("✅ 기존 WebSocket 연결 유지됨");
@@ -60,12 +89,22 @@ const connectWebSocket = (roomId) => {
 
   stompClient.connect({}, () => {
     console.log("✅ WebSocket 연결 성공");
+
+    // ✅ WebSocket 연결 시 email 다시 확인
+    fetchUserEmailFromToken();
+
     stompClient.subscribe(`/sub/chat/${roomId}`, (message) => {
       try {
         const newMessageData = JSON.parse(message.body);
+
+        // ✅ sender가 null이거나 잘못된 값이면 기본값 설정
+        if (!newMessageData.sender || newMessageData.sender.trim() === "") {
+          newMessageData.sender = "알 수 없음";
+        }
+
         messages.value.push({
           id: newMessageData.id || Math.random(),
-          sender: newMessageData.sender || "알 수 없음",
+          sender: newMessageData.sender.trim(),
           message: newMessageData.message || "내용 없음",
           createdAt: newMessageData.createdAt || new Date().toISOString(),
         });
@@ -80,66 +119,29 @@ const connectWebSocket = (roomId) => {
   });
 };
 
-// 사용자 초대 함수
-const inviteUser = async () => {
-  const token = localStorage.getItem("accessToken");
-  if (!token) {
-    alert("로그인이 필요합니다.");
-    return;
-  }
-
-  if (!inviteEmail.value.trim()) {
-    alert("이메일을 입력해주세요.");
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:8080/chats/invites", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        roomId: roomId.value,
-        email: inviteEmail.value,
-      }),
-    });
-
-    if (!response.ok) throw new Error("초대 실패");
-
-    alert("초대 완료!");
-    inviteEmail.value = "";  // 이메일 입력 필드 초기화
-  } catch (error) {
-    alert(error.message);
-  }
-};
-
+// ✅ 메시지 전송 기능 (WebSocket으로 전송)
 const sendMessage = () => {
   if (!newMessage.value.trim()) return;
 
+  // ✅ sender를 JWT에서 추출한 email로 설정
   const messagePayload = {
-    sender: username.value,
+    sender: userEmail.value,
     message: newMessage.value,
     createdAt: new Date().toISOString(),
   };
+
   console.log("📤 메시지 전송됨:", messagePayload);
 
   if (stompClient && stompClient.connected) {
     stompClient.send(`/pub/chat/sendMessage/${roomId.value}`, {}, JSON.stringify(messagePayload));
-    messages.value.push({ ...messagePayload, id: Math.random() });
-    newMessage.value = "";
-    scrollToBottom();
   } else {
     alert("웹소켓 연결이 끊어졌습니다. 다시 접속하세요.");
   }
+
+  newMessage.value = "";
 };
 
-const fetchMessages = (roomId) => {
-  console.log("📥 기존 메시지 불러오기:", roomId);
-  messages.value = []; // 🔥 기존 메시지 중복 방지
-};
-
+// ✅ 채팅창 자동 스크롤
 const scrollToBottom = () => {
   nextTick(() => {
     if (chatMessages.value) {
@@ -148,17 +150,20 @@ const scrollToBottom = () => {
   });
 };
 
+// ✅ 날짜 포맷 변환
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return "시간 없음";
   const date = new Date(timestamp);
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 };
 
+// ✅ 컴포넌트 마운트 시 WebSocket 연결 및 사용자 정보 설정
 onMounted(() => {
+  fetchUserEmailFromToken();
   connectWebSocket(roomId.value);
-  fetchMessages(roomId.value);
 });
 
+// ✅ 컴포넌트 해제 시 WebSocket 연결 종료
 onUnmounted(() => {
   if (stompClient) stompClient.disconnect();
 });
@@ -199,7 +204,7 @@ onUnmounted(() => {
   align-self: flex-end;
   padding: 10px;
   border-radius: 10px;
-  max-width: 70%;
+  max-width: 50%;
   text-align: right;
   margin-left: auto;
 }
@@ -209,8 +214,23 @@ onUnmounted(() => {
   align-self: flex-start;
   padding: 10px;
   border-radius: 10px;
-  max-width: 70%;
+  max-width: 50%;
   text-align: left;
   margin-right: auto;
+}
+
+.message-input-container {
+  display: flex;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.message-input-container input {
+  flex-grow: 1;
+  padding: 10px;
+}
+
+.message-input-container button {
+  margin-left: 10px;
 }
 </style>

@@ -19,6 +19,11 @@
         <router-link to="/register">상품 등록</router-link>
       </li>
 
+      <!-- 관리자만 쿠폰 등록 버튼 표시 -->
+      <li v-if="isAdmin">
+        <router-link to="/coupon-register">쿠폰 등록</router-link>
+      </li>
+
       <!-- 로그인한 경우 로그아웃 버튼 -->
       <li v-if="isLoggedIn" @click="handleLogout" class="logout">로그아웃</li>
     </ul>

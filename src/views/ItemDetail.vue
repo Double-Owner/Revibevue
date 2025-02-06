@@ -2,6 +2,11 @@
   <div v-if="item" class="item-detail">
     <h2>{{ item.name }}</h2>
     <img :src="item.image" :alt="item.name" class="item-image" />
+    
+    <div class="like-container" @click="toggleLike">
+      <span :class="{'liked': isLiked}" class="heart">&#10084;</span>
+    </div>
+    
     <p><strong>브랜드:</strong> {{ item.brandName }}</p>
     <p><strong>카테고리:</strong> {{ item.category }}</p>
     <p><strong>설명:</strong> {{ item.description }}</p>
@@ -16,22 +21,6 @@
       <button @click="goToPayment" class="bid-button payment-button">결제하기</button>
       <button @click="goBack" class="bid-button back-button">뒤로 가기</button>
     </div>
-
-    <!-- ADMIN 전용 옵션 등록 기능 -->
-    <div v-if="isAdmin" class="admin-section">
-      <h3>상품 옵션 등록</h3>
-      <div class="option-container">
-        <select v-model="selectedSize" class="size-select">
-          <option disabled value="">사이즈 선택</option>
-          <option v-for="size in sizeOptions" :key="size" :value="size">
-            {{ size }}
-          </option>
-        </select>
-        <button @click="registerOption" class="bid-button option-button">옵션 등록</button>
-      </div>
-    </div>
-
-    <p v-if="optionMessage" class="option-message">{{ optionMessage }}</p>
   </div>
   <div v-else class="loading">상품 정보를 불러오는 중...</div>
 </template>
@@ -43,23 +32,8 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 const item = ref(null);
-const isAdmin = ref(false); // ADMIN 여부 확인
-const selectedSize = ref(""); // 선택된 사이즈
-const optionMessage = ref(""); // 옵션 등록 메시지
+const isLiked = ref(false);
 
-const sizeOptions = [
-  "220", "225", "230", "235", "240", "245", "250", "255", "260", "265",
-  "270", "275", "285", "290", "295", "300", "305", "310", "315", "320",
-  "325"
-];
-
-// 로컬 스토리지에서 role 확인
-const checkAdminStatus = () => {
-  const userRole = localStorage.getItem("role");
-  isAdmin.value = userRole === "ADMIN"; // ADMIN이면 true
-};
-
-// 상품 정보 가져오기
 const fetchItemDetail = async (id) => {
   try {
     const response = await fetch(`http://localhost:8080/api/items/${id}`);
@@ -74,47 +48,39 @@ const fetchItemDetail = async (id) => {
   }
 };
 
-// 옵션 등록 요청
-const registerOption = async () => {
-  if (!selectedSize.value) {
-    optionMessage.value = "사이즈를 선택해주세요.";
-    return;
-  }
-
+const toggleLike = async () => {
   const token = localStorage.getItem("accessToken");
-
   if (!token) {
-    optionMessage.value = "로그인이 필요합니다.";
+    alert("로그인이 필요합니다.");
     return;
   }
 
   try {
     const response = await fetch(
-      `http://localhost:8080/api/items/${route.params.id}/options`,
+      `http://localhost:8080/api/likes?itemId=${route.params.id}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ size: selectedSize.value }),
       }
     );
 
     const result = await response.json();
     if (response.ok) {
-      optionMessage.value = "옵션이 성공적으로 등록되었습니다.";
+      isLiked.value = result.message.includes("등록");
+      console.log(result.message);
     } else {
-      optionMessage.value = `옵션 등록 실패: ${result.message}`;
+      console.error("좋아요 요청 실패:", result.message);
     }
   } catch (error) {
-    optionMessage.value = "옵션 등록 중 오류 발생.";
+    console.error("좋아요 요청 중 오류 발생:", error);
   }
 };
 
 onMounted(() => {
   fetchItemDetail(route.params.id);
-  checkAdminStatus();
 });
 
 const goBack = () => {
@@ -152,6 +118,22 @@ const goToPayment = () => {
   text-align: center;
 }
 
+.like-container {
+  text-align: right;
+  padding-right: 10px;
+  cursor: pointer;
+  font-size: 24px;
+}
+
+.heart {
+  color: gray;
+  transition: color 0.3s ease-in-out;
+}
+
+.heart.liked {
+  color: red;
+}
+
 h2 {
   font-size: 24px;
   margin-bottom: 20px;
@@ -185,8 +167,6 @@ p {
   transition: 0.3s ease-in-out;
   width: 160px;
   height: 50px;
-  text-align: center;
-  display: inline-block;
 }
 
 .buy-button {
@@ -207,27 +187,6 @@ p {
 .back-button {
   background-color: #6c757d;
   color: white;
-}
-
-.option-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.size-select {
-  padding: 10px;
-  border-radius: 5px;
-  font-size: 1rem;
-}
-
-.option-button {
-  background-color: #ff9800;
-  color: white;
-  width: 160px;
-  height: 50px;
 }
 
 .loading {

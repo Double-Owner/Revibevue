@@ -8,18 +8,18 @@
       </div>
       <h2 class="nickname">{{ user.nickname || "사용자" }}</h2>
       <nav>
-        <div class="info">
-          <div class="title">쇼핑정보</div>
+        <div class="menu-section">
+          <h3>쇼핑정보</h3>
           <ul>
-            <li @click="navigateTo('/orders')">구매내역</li>
-            <li @click="navigateTo('/wishlist')">관심상품</li>
+            <li @click="navigateTo('/orders')">📦 구매내역</li>
+            <li @click="navigateTo('/likes')">❤️ 좋아요 목록</li>
           </ul>
         </div>
-        <div class="myinfo">
-          <div class="title">내정보</div>
+        <div class="menu-section">
+          <h3>내정보</h3>
           <ul>
-            <li @click="navigateTo('/profile')">프로필 정보</li>
-            <li @click="navigateTo('/payment')">결제정보</li>
+            <li @click="navigateTo('/profile')">👤 프로필 정보</li>
+            <li @click="navigateTo('/payment')">💳 결제정보</li>
           </ul>
         </div>
       </nav>
@@ -27,30 +27,28 @@
 
     <!-- 프로필 본문 -->
     <main class="profile-content">
-      <h2 class="section-title">프로필 정보</h2>
+      <h2 class="section-title">👤 내 프로필</h2>
 
-      <div v-if="loading" class="loading">로딩 중...</div>
+      <div v-if="loading" class="loading">⏳ 로딩 중...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
       <div v-else class="profile-card">
-        <div class="profile-section">
-          <h3>내 프로필</h3>
+        <div class="profile-header">
+          <div class="profile-image-small">
+            <img v-if="user.profileImage" :src="user.profileImage" alt="프로필 이미지" />
+            <div v-else class="no-profile">이미지 없음</div>
+          </div>
           <div class="profile-info">
-            <div class="profile-image-small">
-              <img v-if="user.profileImage" :src="user.profileImage" alt="프로필 이미지" />
-              <div v-else class="no-profile">이미지 없음</div>
-            </div>
             <p><strong>이름:</strong> {{ user.nickname || "사용자" }}</p>
+            <p><strong>이메일:</strong> <span class="email">{{ user.email }}</span></p>
           </div>
         </div>
 
         <div class="profile-section">
-          <h3>계정 정보</h3>
-          <p><strong>이메일:</strong> <span class="email">{{ user.email }}</span></p>
-          <p><strong>비밀번호:</strong> ********</p>
+          <h3>📞 연락처</h3>
           <p><strong>휴대폰 번호:</strong> {{ user.phoneNumber || "등록된 번호 없음" }}</p>
         </div>
 
-        <button class="edit-btn" @click="editProfile">변경</button>
+        <button class="edit-btn" @click="editProfile">✏️ 프로필 수정</button>
       </div>
     </main>
   </div>
@@ -73,6 +71,10 @@ const user = ref({
 const loading = ref(false);
 const error = ref("");
 
+const likes = ref([]);
+const likesLoading = ref(false);
+const likesError = ref("");
+
 // ✅ 프로필 가져오기
 const fetchProfile = async () => {
   const token = localStorage.getItem("accessToken");
@@ -87,8 +89,6 @@ const fetchProfile = async () => {
   error.value = "";
 
   try {
-    console.log("🔍 API 요청 시작: /api/users/profile");
-
     const response = await fetch("http://localhost:8080/api/users/profile", {
       method: "GET",
       headers: {
@@ -98,26 +98,49 @@ const fetchProfile = async () => {
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        alert("세션이 만료되었습니다. 다시 로그인하세요.");
-        localStorage.removeItem("accessToken");
-        router.push("/login");
-        return;
-      }
       throw new Error(`API 오류: ${response.status}`);
     }
 
     const data = await response.json();
-    if (!data.data) {
-      throw new Error("프로필 데이터를 찾을 수 없습니다.");
-    }
-
     user.value = { ...data.data };
   } catch (err) {
-    console.error("API 요청 오류:", err);
-    error.value = `프로필 정보를 불러오는 중 오류가 발생했습니다. ${err.message}`;
+    error.value = `프로필 정보를 불러오는 중 오류 발생: ${err.message}`;
   } finally {
     loading.value = false;
+  }
+};
+
+// ✅ 좋아요 목록 가져오기
+const fetchLikes = async () => {
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+
+  likesLoading.value = true;
+  likesError.value = "";
+
+  try {
+    const response = await fetch("http://localhost:8080/api/likes", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API 오류: ${response.status}`);
+    }
+
+    const data = await response.json();
+    likes.value = data.data || [];
+  } catch (err) {
+    likesError.value = `좋아요 목록을 불러오는 중 오류 발생: ${err.message}`;
+  } finally {
+    likesLoading.value = false;
   }
 };
 
@@ -156,7 +179,10 @@ const editProfile = async () => {
 };
 
 // ✅ 페이지 로드시 API 호출
-onMounted(fetchProfile);
+onMounted(() => {
+  fetchProfile();
+  fetchLikes();
+});
 
 // ✅ 페이지 이동
 const navigateTo = (path) => {
@@ -170,25 +196,22 @@ const navigateTo = (path) => {
   display: flex;
   width: 100%;
   height: 100vh;
-  background-color: #f8f9fa;
+  background: linear-gradient(135deg, #ece9e6, #ffffff);
 }
 
 /* 사이드바 */
 .sidebar {
-  width: 250px;
+  width: 280px;
   background-color: #343a40;
   color: white;
   padding: 20px;
   text-align: center;
   border-right: 2px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
 
 .profile-image-large {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   background-color: #6c757d;
   display: flex;
@@ -197,22 +220,29 @@ const navigateTo = (path) => {
 }
 
 .nickname {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   margin-top: 10px;
+  font-weight: bold;
 }
 
-.sidebar ul {
+.menu-section h3 {
+  font-size: 1.1rem;
+  margin: 15px 0 10px;
+}
+
+.menu-section ul {
   list-style: none;
   padding: 0;
 }
 
-.sidebar li {
+.menu-section li {
   cursor: pointer;
   padding: 10px;
   border-radius: 5px;
+  transition: 0.3s;
 }
 
-.sidebar li:hover {
+.menu-section li:hover {
   background-color: #495057;
 }
 
@@ -220,42 +250,24 @@ const navigateTo = (path) => {
 .profile-content {
   flex: 1;
   padding: 30px;
-  background-color: white;
 }
 
 .section-title {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   margin-bottom: 20px;
 }
 
 .profile-card {
-  background: #ffffff;
+  background: #fff;
   padding: 20px;
-  border-radius: 8px;
-  border: 2px solid #ddd;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 2px 2px 15px rgba(0, 0, 0, 0.1);
 }
 
-.profile-section {
-  margin-bottom: 20px;
-}
-
-.email {
-  font-weight: bold;
-  color: #007bff;
-}
-
-/* 버튼 스타일 */
 .edit-btn {
   background-color: #007bff;
   color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.edit-btn:hover {
-  background-color: #0056b3;
+  padding: 12px 20px;
+  border-radius: 8px;
 }
 </style>
